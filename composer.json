@@ -1,6 +1,17 @@
 {
+    "name": "your-name/slim-survey",
+    "description": "Anonymous Survey System with Slim Framework 4",
+    "type": "project",
     "require": {
-        "slim/slim": "4.*",
-        "slim/psr7": "^1.8"
+        "php": "^8.0",
+        "slim/slim": "^4.12",
+        "slim/psr7": "^1.6",
+        "php-di/php-di": "^7.0",
+        "slim/twig-view": "^3.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
     }
 }

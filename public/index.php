@@ -1,67 +1,36 @@
 <?php
 
 use Slim\Factory\AppFactory;
-use Slim\Psr7\Request;
-use Slim\Psr7\Response;
+use App\Controllers\HomeController;
+use App\Controllers\AdminController;
+use App\Middleware\AuthMiddleware;
+use App\Models\Database;
 
 require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/../app/config/database.php';
 
-session_start();
-define('BASE_URL', '/survey-system/public');
+// Initialize database
+Database::get();
+
+// Create Slim app
 $app = AppFactory::create();
-$app->setBasePath('/survey-system/public');
+$app->addErrorMiddleware(true, true, true);
+$app->addRoutingMiddleware();
 
-$app->addBodyParsingMiddleware();
+// Public routes
+$app->get('/', [HomeController::class, 'index']);
+$app->get('/survey/{slug}', [HomeController::class, 'showSurvey']);
+$app->post('/survey/{slug}/submit', [HomeController::class, 'submitSurvey']);
 
-// controllers
-require __DIR__ . '/../app/controllers/AuthController.php';
-require __DIR__ . '/../app/controllers/AdminController.php';
-require __DIR__ . '/../app/controllers/SurveyController.php';
+// Admin login (no auth required)
+$app->get('/admin/login', [AdminController::class, 'loginForm']);
+$app->post('/admin/login', [AdminController::class, 'login']);
+$app->get('/admin/logout', [AdminController::class, 'logout']);
 
-$auth = new AuthController();
-$admin = new AdminController();
-$survey = new SurveyController();
-
-/* AUTH */
-$app->get('/login', function ($req, $res) use ($auth) {
-    return $auth->loginPage($req, $res);
-});
-
-$app->post('/login', function ($req, $res) use ($auth) {
-    return $auth->login($req, $res);
-});
-
-$app->get('/logout', function ($req, $res) use ($auth) {
-    return $auth->logout($req, $res);
-});
-
-/* ADMIN */
-$app->get('/admin', function ($req, $res) use ($admin) {
-    return $admin->dashboard($req, $res);
-});
-
-$app->post('/admin/upload', function ($req, $res) use ($admin) {
-    return $admin->uploadCSV($req, $res);
-});
-
-$app->get('/admin/toggle/{id}', function ($req, $res, $args) use ($admin) {
-    return $admin->toggle($req, $res, $args);
-});
-
-$app->get('/admin/download/{id}', function ($req, $res, $args) use ($admin) {
-    return $admin->download($req, $res, $args);
-});
-$app->get('/admin', function ($req, $res) use ($admin) {
-    return $admin->dashboard($req, $res);
-});
-/* SURVEY */
-$app->get('/survey/{slug}', function ($req, $res, $args) use ($survey) {
-    return $survey->show($req, $res, $args);
-});
-
-$app->post('/survey/{slug}', function ($req, $res, $args) use ($survey) {
-    return $survey->submit($req, $res, $args);
-});
+// Protected admin routes
+$app->get('/admin/dashboard', [AdminController::class, 'dashboard'])->add(AuthMiddleware::class);
+$app->post('/admin/surveys/create', [AdminController::class, 'createSurvey'])->add(AuthMiddleware::class);
+$app->post('/admin/surveys/{id}/toggle', [AdminController::class, 'toggleSurvey'])->add(AuthMiddleware::class);
+$app->get('/admin/surveys/{id}/results', [AdminController::class, 'viewResults'])->add(AuthMiddleware::class);
+$app->get('/admin/surveys/{id}/download', [AdminController::class, 'downloadResults'])->add(AuthMiddleware::class);
 
 $app->run();
